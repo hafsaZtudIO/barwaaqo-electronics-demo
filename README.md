@@ -1,85 +1,102 @@
 <div align="center">
 
-<img src="frontend/assets/logo.png" alt="Barwaaqo Electronics logo" width="112">
+<img src="frontend/public/logo.png" alt="Barwaaqo Electronics logo" width="112">
 
 # Barwaaqo Electronics
 
-### Retail management workspace
+### Inventory, sales, and shop management
 
-Sales, inventory, customer credit, expenses, and supplier purchases.<br>
-Explore the shop with fictional records and browser-local storage.
-
-[Live home page](https://hafsaztudio.github.io/barwaaqo-electronics-demo/) · [Try the workspace](https://hafsaztudio.github.io/barwaaqo-electronics-demo/frontend/demo.html) · [Run locally](#run-locally) · [Project layout](#project-layout)
+[Home page](https://hafsaztudio.github.io/barwaaqo-electronics-demo/) · [Open workspace](https://hafsaztudio.github.io/barwaaqo-electronics-demo/frontend/demo.html) · [Run locally](#run-locally)
 
 </div>
 
 ---
 
-## Explore the shop
+The public website uses the original Barwaaqo shop screens, styling, forms, and PostgreSQL business rules. Its home page uses DM Sans and Instrument Serif with a compact workspace preview.
 
-The home page introduces the workspace. Select **Open workspace** to try the shop workflows using sample products, customers, and suppliers.
+The workspace starts with fictional products, suppliers, customers, staff accounts, and transactions. Records are saved in the visitor's browser. PGlite runs the shop's PostgreSQL migrations locally in WebAssembly.
 
-| Workflow | Try it |
+## Shop workflows
+
+| Screen | Available workflows |
 | --- | --- |
-| **Point of sale** | Add products to the cart, complete a simulated sale, and view or print its receipt. |
-| **Inventory** | Search products by name, SKU, or category and check low-stock items. |
-| **Customer credit** | Charge a sample sale to a demo customer and record a repayment. |
-| **Supplier purchases** | Create an order, receive it into stock, and record partial payments. |
-| **Expenses** | Record a shop cost by category and payment method, or void an incorrect entry. |
-| **End of day** | Compare collections, expenses, and supplier payments by payment method. |
+| **Showroom** | Sales activity, stock levels, low-stock alerts, recent sales, and stock movements |
+| **Point of Sale** | Product and barcode search, quantities, item discounts, parked sales, ZAAD and customer credit checkout |
+| **Products** | Create and edit products, categories, prices, units, photos, minimum stock, and archived products |
+| **Stock In / Stock Out** | Receive stock, record issues, review movement history, and reverse eligible stock adjustments |
+| **Sales** | Find receipts, print them, edit completed sales, and record partial returns |
+| **Customers** | Customer records, credit balances, repayments, and account activity |
+| **Supplier Purchases** | Purchase orders, receipt into stock, partial payments, and supplier balances |
+| **Expenses** | Categories, payment methods, dates, references, and voided entries |
+| **Suppliers** | Supplier directory, delivery history, purchases, and balances |
+| **Employees** | Create local sample accounts, update usernames, and change roles and access |
+| **Reports** | Date filters, sales summaries, product and staff performance, expenses, and CSV exports |
+| **End of Day** | Collections, refunds, expenses, and supplier payments by method |
+| **Settings** | Shop name, timezone, product categories, and the audit trail |
 
-This public version uses fictional names and seeded records. Changes stay in the current browser under the `barwaaqo-public-demo-v1` local storage key. Use **Reset workspace** in the sidebar to start again.
+## Sample accounts
+
+The workspace opens as the sample owner on the first visit. **Sign out** opens the original sign-in screen.
+
+| Role | Username | Password |
+| --- | --- | --- |
+| Administrator | owner | shop123 |
+| Employee | cashier | shop123 |
+
+New sample staff accounts work within the same browser. Passwords are hashed locally. Email invitation and recovery actions display sample-account guidance.
+
+The floating **Reset sample data** control restores the starting records and accounts.
 
 ## Run locally
 
-Use Node.js 22 or later. This project uses Node's built-in modules and browser JavaScript.
+Use Node.js 22 or later.
 
 ```sh
 git clone https://github.com/hafsaZtudIO/barwaaqo-electronics-demo.git
 cd barwaaqo-electronics-demo
+npm ci
+npm run build
 npm start
 ```
 
-Open [localhost on port 4173](http://127.0.0.1:4173). A dependency installation is optional because the app has zero npm dependencies.
-
-## Verify and build
+Open [localhost on port 4173](http://127.0.0.1:4173).
 
 ```sh
 npm test
-npm run build
 ```
 
-The tests exercise stock checks, sale rollback, credit repayments, supplier overpayments, receipt replay protection, and expense totals. The build copies the public website and demo modules into `dist/` for static hosting.
-
-For GitHub Pages, select **Deploy from a branch**, choose `main`, and select `/ (root)`. The root page opens the home page in `frontend/`.
+The tests apply the actual shop migrations to embedded PostgreSQL. They verify permissions, stock, rollback, retry protection, sales corrections, returns, credit, supplier payments, expenses, and complete snapshot restoration.
 
 ## Project layout
 
 ```text
 frontend/
-  index.html          Public home page
-  demo.html           Interactive workspace
-  app.js              Screens, forms, and browser storage
-  styles.css          Responsive website and workspace styles
-  assets/             Sample product images
+  index.html              Public home page
+  styles.css              Original home page typography and layout
+  demo.html               Workspace entry point
+  workspace.jsx           Browser application shell
+  section.jsx             Original shop page selection
+  components/             Original shop screens and forms
+  platform/               Browser navigation and image adapters
+  workspace-source.css    Original shop stylesheet
+  public/                 Logo, product images, and checkout audio
 backend/
-  demo-data.js        Fictional starting records
-  demo-store.js       Stock, sales, payments, and expense rules
-  server.js           Local static preview server
+  database.js             Browser PostgreSQL and saved snapshots
+  sample-shop.js          Fictional starting records and local sample accounts
+  shop.js                 Local repository and account adapter
+  actions.js              Original form actions adapted to the browser
+  validation.js           Original input validation
+  supabase/migrations/    Original schema and business rules
+  tests/                  Database and public workspace tests
 scripts/
-  build.js            Static website packaging
-tests/
-  demo.test.js        Domain behavior tests
-index.html            Home page entry point
-package.json          Run, test, and build commands
+  build.js                JavaScript, CSS, and static website build
+dist/                     Generated website for GitHub Pages
 ```
 
-## Demo scope
+## Public data and hosting
 
-Payments are simulated. Orders are received in full. Dates use UTC, and amounts use USD integer cents. This public example runs entirely with fictional data and has no connection to the private shop workspace.
+All starting records are fictional. The full workspace uses the browser storage key `barwaaqo-full-workspace-v2`; it keeps its state across reloads and synchronizes updates between tabs.
 
-Use fictional descriptions when trying the forms. The demo keeps browser data until it is reset or cleared. Two tabs in the same browser share demo records, and browsers with Web Locks serialize simultaneous updates.
+The build creates `dist/` with the home page, original workspace UI, PostgreSQL WebAssembly files, and bundled migrations. GitHub Pages serves the generated site from the `gh-pages` branch. Source code lives on `main`.
 
-## Design
-
-The interface uses larger DM Sans typography, warm neutral surfaces, and forest green accents. Font files load from Google Fonts, with local system fallbacks. Product images and the Barwaaqo logo ship with the website.
+Product prices use USD integer cents. Business dates use the shop timezone, initially `Africa/Nairobi`.

@@ -1,0 +1,49 @@
+.sample-toolbar {
+    position: fixed;
+    inset: auto 18px 12px auto;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 8px 13px;
+    border: 1px solid #d9e4db;
+    border-radius: 7px;
+    background: #fffffff5;
+    color: #53645a;
+    box-shadow: 0 3px 12px #17241d0a;
+    font: 12px/1.5 "Segoe UI", Arial, sans-serif;
+}
+.sample-toolbar a, .sample-toolbar button {
+    color: #087446;
+    font: inherit;
+}
+.sample-toolbar button {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+}
+.sample-loading {
+    position: fixed;
+    top: 13px;
+    left: 50%;
+    z-index: 10;
+    padding: 6px 12px;
+    border: 1px solid #d9e4db;
+    border-radius: 6px;
+    background: white;
+    color: #53645a;
+    font-size: 12px;
+}
+@media (max-width: 600px) {
+    .sample-toolbar {
+        inset: auto 8px 8px 8px;
+        gap: 12px;
+        justify-content: space-between;
+        font-size: 11px;
+    }
+    .sample-toolbar span { display: none; }
+}
+@media print {
+    .sample-toolbar, .sample-loading { display: none !important; }
+}

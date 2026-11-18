@@ -3,35 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive retail workspace with fictional shop records stored only in your browser.">
-  <title>Workspace · Barwaaqo Electronics</title>
-  <link rel="icon" type="image/png" href="assets/logo.png">
-  <link rel="stylesheet" href="styles.css?v=2">
-  <script type="module" src="app.js?v=2"></script>
+  <meta name="description" content="Barwaaqo Electronics shop workspace with fictional records stored in your browser.">
+  <title>Barwaaqo Electronics</title>
+  <link rel="icon" type="image/png" href="public/logo.png">
+  <link rel="stylesheet" href="build/workspace.css?v=3">
+  <link rel="stylesheet" href="sample.css?v=3">
+  <script type="module" src="build/workspace.js?v=3"></script>
 </head>
-<body class="demo-body">
-  <a class="skip" href="#content">Skip to content</a>
-  <aside class="sidebar">
-    <a class="brand" href="index.html"><img class="brand-logo" src="assets/logo.png" alt="" width="48" height="48"><span>Barwaaqo</span></a>
-    <nav aria-label="Workspace">
-      <a href="#dashboard" data-page="dashboard"><span>◫</span>Overview</a>
-      <a href="#pos" data-page="pos"><span>↗</span>Point of sale</a>
-      <a href="#inventory" data-page="inventory"><span>▦</span>Inventory</a>
-      <a href="#sales" data-page="sales"><span>≡</span>Sales history</a>
-      <a href="#customers" data-page="customers"><span>◎</span>Customer credit</a>
-      <a href="#purchases" data-page="purchases"><span>⇄</span>Supplier purchases</a>
-      <a href="#expenses" data-page="expenses"><span>$</span>Expenses</a>
-      <a href="#closeout" data-page="closeout"><span>◷</span>End of day</a>
-    </nav>
-    <div class="sidebar-bottom"><button id="reset" class="reset-button" type="button">↻ Reset workspace</button><a href="index.html">← Home</a></div>
-  </aside>
-  <div class="demo-main">
-    <header class="app-topbar"><div><span class="muted">Workspace / </span><span id="breadcrumb">Overview</span></div><div><span id="today"></span><span class="avatar" aria-label="Administrator">AD</span></div></header>
-    <main id="content" tabindex="-1"></main>
-    <footer class="app-footer">Barwaaqo Electronics <span>Sample data · Payments are simulated.</span></footer>
-  </div>
-  <div id="toast" role="status" aria-live="polite" hidden></div>
-  <dialog id="receipt-dialog"><div id="receipt-content"></div><div class="dialog-actions"><button id="print-receipt" class="button dark" type="button">Print receipt</button><button id="close-receipt" class="button outline" type="button">Close</button></div></dialog>
-  <noscript><p class="noscript">Enable JavaScript to open the workspace. <a href="index.html">Return home</a>.</p></noscript>
+<body>
+  <div id="workspace-root"><main class="content"><section class="panel panel-body" role="status">Opening the shop workspace…</section></main></div>
+  <noscript>Enable JavaScript to open the workspace.</noscript>
 </body>
 </html>
