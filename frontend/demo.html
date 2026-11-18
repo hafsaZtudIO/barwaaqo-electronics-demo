@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive retail workspace with fictional shop records stored only in your browser.">
+  <title>Workspace demo · Barwaaqo</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body class="demo-body">
+  <a class="skip" href="#content">Skip to content</a>
+  <aside class="sidebar">
+    <a class="brand" href="index.html"><span class="brand-mark">b.</span><span>barwaaqo<small>RETAIL WORKSPACE</small></span></a>
+    <p class="nav-label">WORKSPACE</p>
+    <nav aria-label="Workspace">
+      <a href="#dashboard" data-page="dashboard"><span>◫</span>Overview</a>
+      <a href="#pos" data-page="pos"><span>↗</span>Point of sale</a>
+      <a href="#inventory" data-page="inventory"><span>▦</span>Inventory</a>
+      <a href="#sales" data-page="sales"><span>≡</span>Sales history</a>
+      <a href="#customers" data-page="customers"><span>◎</span>Customer credit</a>
+      <a href="#purchases" data-page="purchases"><span>⇄</span>Supplier purchases</a>
+      <a href="#expenses" data-page="expenses"><span>$</span>Expenses</a>
+      <a href="#closeout" data-page="closeout"><span>◷</span>End of day</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="demo-pill"><i class="live-dot"></i> Fictional demo data</span><p>Changes are saved on this browser.</p><button id="reset" class="reset-button" type="button">↻ Reset sample data</button><a href="index.html">← Back to home</a></div>
+  </aside>
+  <div class="demo-main">
+    <header class="app-topbar"><div><span class="muted">Workspace / </span><span id="breadcrumb">Overview</span></div><div><span id="today"></span><span class="avatar" aria-label="Demo administrator">DA</span></div></header>
+    <div class="demo-banner"><span><strong>Public demo</strong> All names and records are fictional. Payments are simulated.</span><a href="https://github.com/hafsaZtudIO/barwaaqo-electronics-demo">View source ↗</a></div>
+    <main id="content" tabindex="-1"></main>
+    <footer class="app-footer">Barwaaqo workspace demo <span>USD · Browser-local sample data</span></footer>
+  </div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="receipt-dialog"><div id="receipt-content"></div><div class="dialog-actions"><button id="print-receipt" class="button dark" type="button">Print receipt</button><button id="close-receipt" class="button outline" type="button">Close</button></div></dialog>
+  <noscript><p class="noscript">Enable JavaScript to use the interactive demo. <a href="index.html">Return home</a>.</p></noscript>
+</body>
+</html>

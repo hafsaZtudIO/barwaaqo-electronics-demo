@@ -1,0 +1,14 @@
+{
+  "name": "barwaaqo-electronics-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Public retail workspace demo with fictional data and browser-local storage",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "build": "node scripts/build.js",
+    "test": "node --test --test-isolation=none"
+  },
+  "engines": { "node": ">=22" }
+}
