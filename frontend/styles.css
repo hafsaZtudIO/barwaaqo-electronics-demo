@@ -141,16 +141,12 @@ img {
     letter-spacing:-1.2px;
     line-height:1.1
 }
-.brand-mark {
-    width:40px;
-    height:40px;
-    border:1px solid #b6c5af;
-    border-radius:11px;
-    display:grid;
-    place-items:center;
-    font:34px "Instrument Serif",Georgia,serif;
-    letter-spacing:-2px;
-    padding-bottom:3px
+.brand-logo {
+    width:44px;
+    height:44px;
+    object-fit:contain;
+    flex-shrink:0;
+    border-radius:50%
 }
 .brand small {
     display:block;
@@ -224,9 +220,12 @@ img {
     font-size:11px;
     color:#636e66
 }
-.preview-symbol {
-    font:26px "Instrument Serif",Georgia,serif;
-    color:var(--green)
+.preview-logo {
+    width:28px;
+    height:28px;
+    object-fit:contain;
+    flex-shrink:0;
+    border-radius:50%
 }
 .preview-status {
     margin-left:auto;
@@ -1274,10 +1273,9 @@ dialog::backdrop {
         padding:0;
         font-size:19px
     }
-    .sidebar .brand-mark {
+    .sidebar .brand-logo {
         width:32px;
-        height:32px;
-        font-size:28px
+        height:32px
     }
     .sidebar .brand small {
         font-size:7px

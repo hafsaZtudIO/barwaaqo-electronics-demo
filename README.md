@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/assets/logo.png" alt="Barwaaqo Electronics logo" width="112">
+
 # Barwaaqo Electronics
 
 ### A public retail workspace demo

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const allowed = new Set(["/", "/index.html", "/backend/demo-data.js", "/backend/demo-store.js"]);
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8", ".webp": "image/webp", ".svg": "image/svg+xml" };
+    ".js": "text/javascript; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".svg": "image/svg+xml" };
 const port = Number(process.env.PORT || 4173);
 
 createServer(async (request, response) => {

@@ -247,7 +247,7 @@ function render() {
 function receipt(key) {
     const sale = state.sales.find(value => value.id === key);
     if (!sale) return;
-    document.querySelector("#receipt-content").innerHTML = `<div class="receipt-heading"><p>BARWAAQO · PUBLIC DEMO</p><h2>Sample sales receipt</h2>
+    document.querySelector("#receipt-content").innerHTML = `<div class="receipt-heading"><img class="brand-logo" src="assets/logo.png" alt="Barwaaqo Electronics logo" width="44" height="44"><p>BARWAAQO · PUBLIC DEMO</p><h2>Sample sales receipt</h2>
       <p>${escape(sale.id)} · ${date(sale.date)}<br>Payment method · ${escape(sale.payment)}<br>Fictional sale · No money was transferred</p></div>`
       + table(["Product", "Qty", "Total"], sale.items.map(item => [escape(item.name), item.quantity, money(item.quantity * item.price)]))
       + `<div class="receipt-total"><span>Total</span><strong>${money(sale.total)}</strong></div>`;
