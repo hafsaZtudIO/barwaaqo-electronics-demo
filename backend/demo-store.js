@@ -61,7 +61,7 @@ export function transact(current, operation, data) {
             });
             if (data.payment === "Credit") {
                 const customer = state.customers.find(value => value.id === data.customer);
-                if (!customer) throw new Error("Choose a demo customer for credit.");
+                if (!customer) throw new Error("Choose a customer for credit.");
                 customer.balance += items.reduce((sum, line) => sum + line.price * line.quantity, 0);
             } else method(data.payment);
             const total = items.reduce((sum, line) => sum + line.price * line.quantity, 0);
@@ -113,7 +113,7 @@ export function transact(current, operation, data) {
         }
         case "repayment": {
             const customer = state.customers.find(value => value.id === data.customer);
-            if (!customer) throw new Error("Choose a demo customer.");
+            if (!customer) throw new Error("Choose a customer.");
             integer(data.amount);
             if (data.amount > customer.balance) throw new Error("The payment exceeds the customer balance.");
             customer.balance -= data.amount;

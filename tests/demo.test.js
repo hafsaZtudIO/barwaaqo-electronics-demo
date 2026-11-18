@@ -27,7 +27,7 @@ test("a multi-item sale with insufficient stock leaves every quantity and custom
 test("credit checkout and repayments update the customer balance and collections separately", () => {
     let state = initialState();
     const previous = summary(state);
-    assert.throws(() => transact(state, "sale", { payment: "Credit", items: [{ product: "mouse", quantity: 1 }] }), /Choose a demo customer/);
+    assert.throws(() => transact(state, "sale", { payment: "Credit", items: [{ product: "mouse", quantity: 1 }] }), /Choose a customer/);
     state = transact(state, "sale", { payment: "Credit", customer: "customer-2", items: [{ product: "mouse", quantity: 1 }] });
     assert.equal(state.customers[1].balance, 1800);
     assert.equal(summary(state).collected, previous.collected);

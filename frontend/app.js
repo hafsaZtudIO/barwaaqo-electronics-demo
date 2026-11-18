@@ -21,10 +21,10 @@ function load() {
         if (!saved) return initialState();
         const data = JSON.parse(saved);
         if (data.version !== 1 || !["products", "sales", "customers", "suppliers", "purchases", "expenses", "repayments"]
-            .every(key => Array.isArray(data[key]))) throw new Error("Invalid saved demo.");
+            .every(key => Array.isArray(data[key]))) throw new Error("Invalid saved workspace.");
         return data;
     } catch {
-        storageWarning = "Saved demo data could not be opened. Reset the sample data to start again.";
+        storageWarning = "Saved records could not be opened. Reset the workspace to start again.";
         return initialState();
     }
 }
@@ -42,7 +42,7 @@ async function save(operation, data) {
     async function write() {
         const updated = transact(load(), operation, data);
         try { localStorage.setItem(storageKey, JSON.stringify(updated)); }
-        catch { throw new Error("Your browser could not save the demo. Allow browser storage and try again."); }
+        catch { throw new Error("Your browser could not save these changes. Allow browser storage and try again."); }
         state = updated;
         storageWarning = "";
     }
@@ -61,12 +61,12 @@ function page() {
     return Object.hasOwn(pages, value) ? value : "dashboard";
 }
 
-function heading(title, subtitle, action = "") {
-    return `<header class="page-heading"><div><p class="eyebrow">BARWAAQO DEMO WORKSPACE</p><h1>${title}</h1><p>${subtitle}</p></div>${action}</header>`;
+function heading(title, action = "") {
+    return `<header class="page-heading"><h1>${title}</h1>${action}</header>`;
 }
 
-function panel(title, body, link = "", description = "") {
-    return `<section class="panel"><div class="panel-head"><div><h2>${title}</h2>${description ? `<p>${description}</p>` : ""}</div>${link}</div>${body}</section>`;
+function panel(title, body, link = "") {
+    return `<section class="panel"><div class="panel-head"><h2>${title}</h2>${link}</div>${body}</section>`;
 }
 
 function table(columns, rows, empty = "No records yet.") {
@@ -76,8 +76,8 @@ function table(columns, rows, empty = "No records yet.") {
 }
 
 function stats(values) {
-    return `<div class="stats">${values.map(([label, value, detail], index) =>
-        `<article class="stat ${index === 0 ? "featured" : ""}"><span>${label}</span><strong>${value}</strong><small>${detail}</small></article>`).join("")}</div>`;
+    return `<div class="stats">${values.map(([label, value], index) =>
+        `<article class="stat ${index === 0 ? "featured" : ""}"><span>${label}</span><strong>${value}</strong></article>`).join("")}</div>`;
 }
 
 function productCell(product) {
@@ -86,9 +86,9 @@ function productCell(product) {
 
 function salesTable(sales) {
     return table(["Receipt", "Payment", "Amount", ""], sales.map(sale => [
-        escape(sale.id), badge(sale.payment, sale.payment === "Credit" ? "warn" : ""),
+        escape(sale.id.replace("DEMO-", "INV-")), badge(sale.payment, sale.payment === "Credit" ? "warn" : ""),
         money(sale.total), `<button type="button" class="inline-button" data-receipt="${escape(sale.id)}">Receipt ↗</button>`,
-    ]), "Record a demo sale to see it here.");
+    ]), "No sales recorded yet.");
 }
 
 function dashboard() {
@@ -101,13 +101,13 @@ function dashboard() {
             total: state.sales.filter(sale => sale.date === key).reduce((sum, sale) => sum + sale.total, 0) };
     });
     const max = Math.max(1, ...days.map(day => day.total));
-    return heading("Your shop, at a glance.", "A little clarity for the day ahead. Explore the sample data or make your first demo sale.",
+    return heading("Overview",
         '<a class="button dark small" href="#pos">New sale ↗</a>')
-        + stats([["Sales today", money(totals.revenue), "Includes credit sales"], ["Available stock", state.products.reduce((sum, item) => sum + item.stock, 0), "Units across the catalog"],
-            ["Needs restocking", totals.low, "At or below the minimum"], ["Owed to suppliers", money(totals.supplierBalance), "Unpaid order balances"]])
+        + stats([["Sales today", money(totals.revenue)], ["Units in stock", state.products.reduce((sum, item) => sum + item.stock, 0)],
+            ["Low-stock products", totals.low], ["Supplier balances", money(totals.supplierBalance)]])
         + '<div class="two-col">'
-        + panel("Sales activity", `<div class="chart">${days.map(day =>
-            `<div class="chart-column"><div style="height:${Math.max(3, day.total / max * 100)}%" title="${day.label} · ${money(day.total)}"></div><span>${day.label}</span></div>`).join("")}</div><p class="chart-caption">Demo sales over the last 7 days · USD</p>`)
+        + panel("Sales this week", `<div class="chart">${days.map(day =>
+            `<div class="chart-column"><div style="height:${Math.max(3, day.total / max * 100)}%" title="${day.label} · ${money(day.total)}"></div><span>${day.label}</span></div>`).join("")}</div>`)
         + panel("Time to restock", table(["Product", "On hand", "Minimum"], state.products.filter(item => item.stock <= item.minimum).map(item =>
             [productCell(item), badge(item.stock + " units", "warn"), item.minimum])),
             '<a href="#inventory">View inventory →</a>') + "</div>"
@@ -115,7 +115,7 @@ function dashboard() {
 }
 
 function pos() {
-    return heading("Point of sale", "Choose products, review the cart, and record a simulated payment.")
+    return heading("Point of sale")
         + '<div class="checkout-layout"><section><div class="product-grid">'
         + state.products.map(item => `<button type="button" class="product-card" data-add="${item.id}" ${item.stock ? "" : "disabled"}>
             <img src="assets/${item.image}" alt="" width="160" height="100"><strong>${escape(item.name)}</strong>
@@ -130,13 +130,13 @@ function pos() {
           <div class="cart-total"><span>Total</span><strong>${money([...cart].reduce((sum, [key, quantity]) => sum + state.products.find(value => value.id === key).price * quantity, 0))}</strong></div>
           <form id="sale-form">
             <label class="field">Payment method<select name="payment">${methods()}${option("Credit", "Customer credit")}</select></label>
-            <label class="field">Demo customer (required for credit)<select name="customer"><option value="">Walk-in customer</option>${state.customers.map(customer => option(customer.id, customer.name)).join("")}</select></label>
-            <button type="submit" class="button dark" ${cart.size ? "" : "disabled"}>Complete demo sale ↗</button>
+            <label class="field">Customer<select name="customer"><option value="">Walk-in customer</option>${state.customers.map(customer => option(customer.id, customer.name.replace(/^Demo /, ""))).join("")}</select></label>
+            <button type="submit" class="button dark" ${cart.size ? "" : "disabled"}>Complete sale ↗</button>
           </form></div>`) + "</div>";
 }
 
 function inventory() {
-    return heading("Inventory", "Browse the sample catalog. Receive a supplier purchase to increase available stock.",
+    return heading("Inventory",
         '<a href="#purchases" class="button dark small">Receive a delivery ↗</a>')
         + panel("Product catalog", '<div class="panel-body"><label class="field filter">Find a product<input id="inventory-search" type="search" placeholder="Search name, SKU, or category"></label></div>'
             + '<div id="inventory-table">' + inventoryTable(state.products) + "</div>");
@@ -150,14 +150,14 @@ function inventoryTable(products) {
 }
 
 function sales() {
-    return heading("Sales history", "Open a receipt to review the exact products and prices recorded in that sale.")
+    return heading("Sales history")
         + panel("Recorded sales", salesTable(state.sales));
 }
 
 function customers() {
-    return heading("Customer credit", "Use fictional customer accounts to explore credit sales and repayments.")
-        + panel("Demo customers", table(["Customer", "Outstanding", "Record a ZAAD repayment"], state.customers.map(customer => [
-            escape(customer.name), money(customer.balance),
+    return heading("Customer credit")
+        + panel("Customers", table(["Customer", "Outstanding", "Record a ZAAD repayment"], state.customers.map(customer => [
+            escape(customer.name.replace(/^Demo /, "")), money(customer.balance),
             customer.balance ? `<form class="payment-form" data-repayment="${customer.id}"><label class="field">Amount (USD)<input name="amount" type="number" min="0.01" max="${customer.balance / 100}" step="0.01" required></label><button class="button outline small" type="submit">Record</button></form>` : badge("Settled"),
         ])));
 }
@@ -167,7 +167,7 @@ function purchases() {
     const orderCards = state.purchases.map(order => {
         const supplier = state.suppliers.find(value => value.id === order.supplier);
         const paid = order.total - balance(order);
-        return `<article class="order-item"><header><h3>${escape(order.id)}</h3>${badge(order.status, order.status === "ordered" ? "warn" : "gray")}</header>
+        return `<article class="order-item"><header><h3>${escape(order.id.replace("PO-DEMO-", "PO-"))}</h3>${badge(order.status, order.status === "ordered" ? "warn" : "gray")}</header>
           <p><strong>${escape(supplier.name)}</strong> · ${date(order.date)}</p><p>${order.items.map(line => `${line.quantity} × ${escape(line.name)}`).join(" · ")}</p>
           <div class="order-amounts"><span>Order total<strong>${money(order.total)}</strong></span><span>Paid<strong>${money(paid)}</strong></span><span>Outstanding<strong>${order.status === "cancelled" ? "—" : money(balance(order))}</strong></span></div>
           <div class="form-actions">${order.status === "ordered" ? `<button class="button dark small" type="button" data-receive="${order.id}">Receive into stock</button>` : ""}
@@ -178,11 +178,11 @@ function purchases() {
           ${order.payments.length ? `<p style="margin-top:14px">${order.payments.map(payment => `${date(payment.date)} · ${money(payment.amount)} via ${escape(payment.method)}`).join("<br>")}</p>` : ""}
         </article>`;
     }).join("");
-    return heading("Supplier purchases", "Follow an order from the supplier bill to the shelf. All payments are simulated.")
-        + stats([["Owed to suppliers", money(totals.supplierBalance), "Open and received orders"],
-            ["Purchase orders", state.purchases.length, "Sample order history"],
-            ["Awaiting delivery", state.purchases.filter(order => order.status === "ordered").length, "Orders ready to receive"],
-            ["Paid today", money(totals.supplierPayments), "Supplier payments recorded"]])
+    return heading("Supplier purchases")
+        + stats([["Supplier balances", money(totals.supplierBalance)],
+            ["Purchase orders", state.purchases.length],
+            ["Awaiting delivery", state.purchases.filter(order => order.status === "ordered").length],
+            ["Paid today", money(totals.supplierPayments)]])
         + '<div class="two-col">' + panel("New purchase order", `<div class="panel-body"><form id="purchase-form">
           <div class="form-grid">
             <label class="field wide">Supplier<select name="supplier">${state.suppliers.map(value => option(value.id, value.name)).join("")}</select></label>
@@ -195,14 +195,14 @@ function purchases() {
 
 function expenses() {
     const totals = summary(state);
-    return heading("Shop expenses", "Keep everyday spending visible, from delivery transport to the electricity bill.")
-        + stats([["Expenses today", money(totals.expenses), "Excludes voided entries"],
-            ["Recorded expenses", state.expenses.filter(row => !row.voided).length, "Active demo records"],
-            ["Collections today", money(totals.collected), "Sales payments and repayments"],
-            ["Net collections", money(totals.net), "After expenses and supplier payments"]])
+    return heading("Expenses")
+        + stats([["Expenses today", money(totals.expenses)],
+            ["Recorded expenses", state.expenses.filter(row => !row.voided).length],
+            ["Collections today", money(totals.collected)],
+            ["Net collections", money(totals.net)]])
         + panel("Record an expense", `<div class="panel-body"><form id="expense-form"><div class="form-grid">
           <label class="field">Category<select name="category">${["Rent", "Electricity", "Transport", "Internet", "Salaries", "Maintenance", "Other"].map(value => option(value, value)).join("")}</select></label>
-          <label class="field">Description<input name="description" maxlength="180" placeholder="Use a fictional description" required></label>
+          <label class="field">Description<input name="description" maxlength="180" placeholder="Delivery transport" required></label>
           <label class="field">Amount (USD)<input name="amount" type="number" min="0.01" max="9999999.99" step="0.01" required></label>
           <label class="field">Paid using<select name="payment">${methods()}</select></label>
         </div><div class="form-actions"><button type="submit" class="button dark">Record expense ↗</button></div></form></div>`)
@@ -221,18 +221,17 @@ function closeout() {
         const suppliers = state.purchases.flatMap(order => order.payments).filter(row => row.date === today() && row.method === payment).reduce((sum, row) => sum + row.amount, 0);
         return [payment, money(collections), money(expenses), money(suppliers), `<strong>${money(collections - expenses - suppliers)}</strong>`];
     });
-    return heading("End of day", "A view of today’s collections and outgoings in the demo. Dates use UTC.")
-        + stats([["Net collections", money(totals.net), "Collections less recorded outgoings"],
-            ["Money collected", money(totals.collected), "Excludes customer credit"],
-            ["Expenses paid", money(totals.expenses), "Active expenses today"],
-            ["Suppliers paid", money(totals.supplierPayments), "Order payments today"]])
-        + panel("Payment reconciliation", table(["Method", "Collected", "Expenses", "Supplier payments", "Net"], rows)
-            + '<p class="closeout-summary">Credit sales increase the customer’s balance. A recorded repayment adds to collections on the day it is recorded.</p>');
+    return heading("End of day")
+        + stats([["Net collections", money(totals.net)],
+            ["Money collected", money(totals.collected)],
+            ["Expenses paid", money(totals.expenses)],
+            ["Suppliers paid", money(totals.supplierPayments)]])
+        + panel("Payment reconciliation", table(["Method", "Collected", "Expenses", "Supplier payments", "Net"], rows));
 }
 
 function render() {
     const selected = page();
-    document.title = pages[selected] + " · Barwaaqo demo";
+    document.title = pages[selected] + " · Barwaaqo Electronics";
     document.querySelector("#breadcrumb").textContent = pages[selected];
     document.querySelectorAll("[data-page]").forEach(link => {
         const active = link.dataset.page === selected;
@@ -247,10 +246,10 @@ function render() {
 function receipt(key) {
     const sale = state.sales.find(value => value.id === key);
     if (!sale) return;
-    document.querySelector("#receipt-content").innerHTML = `<div class="receipt-heading"><img class="brand-logo" src="assets/logo.png" alt="Barwaaqo Electronics logo" width="44" height="44"><p>BARWAAQO · PUBLIC DEMO</p><h2>Sample sales receipt</h2>
-      <p>${escape(sale.id)} · ${date(sale.date)}<br>Payment method · ${escape(sale.payment)}<br>Fictional sale · No money was transferred</p></div>`
+    document.querySelector("#receipt-content").innerHTML = `<div class="receipt-heading"><img class="brand-logo" src="assets/logo.png" alt="Barwaaqo Electronics logo" width="44" height="44"><p>BARWAAQO ELECTRONICS</p><h2>Sales receipt</h2>
+      <p>${escape(sale.id.replace("DEMO-", "INV-"))} · ${date(sale.date)}<br>Payment method · ${escape(sale.payment)}</p></div>`
       + table(["Product", "Qty", "Total"], sale.items.map(item => [escape(item.name), item.quantity, money(item.quantity * item.price)]))
-      + `<div class="receipt-total"><span>Total</span><strong>${money(sale.total)}</strong></div>`;
+      + `<div class="receipt-total"><span>Total</span><strong>${money(sale.total)}</strong></div><p>Sample data · Payments are simulated.</p>`;
     document.querySelector("#receipt-dialog").showModal();
 }
 
@@ -277,7 +276,7 @@ content.addEventListener("click", async event => {
             target.disabled = true;
             await save(operation, { id: target.dataset.receive || target.dataset.cancelOrder || target.dataset.void });
             render();
-            toast(operation === "receive" ? "Delivery received. Demo stock updated." : operation === "voidExpense" ? "Expense voided." : "Purchase order cancelled.");
+            toast(operation === "receive" ? "Delivery received. Stock updated." : operation === "voidExpense" ? "Expense voided." : "Purchase order cancelled.");
         }
     } catch (error) {
         target.disabled = false;
@@ -298,7 +297,7 @@ content.addEventListener("submit", async event => {
             cart.clear();
             render();
             receipt(state.sales[0].id);
-            toast("Demo sale recorded and stock updated.");
+            toast("Sale recorded and stock updated.");
         } else {
             let operation;
             if (form.id === "expense-form") {
@@ -318,7 +317,7 @@ content.addEventListener("submit", async event => {
             }
             await save(operation, data);
             render();
-            toast(operation === "purchase" ? "Demo purchase order created." : operation === "expense" ? "Demo expense recorded." : "Demo payment recorded.");
+            toast(operation === "purchase" ? "Purchase order created." : operation === "expense" ? "Expense recorded." : "Payment recorded.");
         }
     } catch (error) {
         button.disabled = false;
@@ -342,7 +341,7 @@ content.addEventListener("change", event => {
 });
 
 document.querySelector("#reset").addEventListener("click", async () => {
-    if (!confirm("Reset all demo records in this browser to the fictional sample data?")) return;
+    if (!confirm("Reset this workspace to its starting sample records?")) return;
     try {
         const reset = async () => localStorage.setItem(storageKey, JSON.stringify(initialState()));
         if (navigator.locks) await navigator.locks.request(storageKey, reset);
@@ -351,8 +350,8 @@ document.querySelector("#reset").addEventListener("click", async () => {
         state = load();
         cart.clear();
         render();
-        toast("Sample data restored.");
-    } catch { toast("Your browser could not reset the saved demo.", true); }
+        toast("Workspace reset.");
+    } catch { toast("Your browser could not reset the workspace.", true); }
 });
 document.querySelector("#close-receipt").addEventListener("click", () => document.querySelector("#receipt-dialog").close());
 document.querySelector("#print-receipt").addEventListener("click", () => window.print());

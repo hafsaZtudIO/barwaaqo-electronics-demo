@@ -4,7 +4,7 @@
 
 # Barwaaqo Electronics
 
-### A public retail workspace demo
+### Retail management workspace
 
 Sales, inventory, customer credit, expenses, and supplier purchases.<br>
 Explore the shop with fictional records and browser-local storage.
@@ -17,7 +17,7 @@ Explore the shop with fictional records and browser-local storage.
 
 ## Explore the shop
 
-The home page introduces the workspace. Select **Step inside the demo** to try the shop workflows using sample products, customers, and suppliers.
+The home page introduces the workspace. Select **Open workspace** to try the shop workflows using sample products, customers, and suppliers.
 
 | Workflow | Try it |
 | --- | --- |
@@ -28,7 +28,7 @@ The home page introduces the workspace. Select **Step inside the demo** to try t
 | **Expenses** | Record a shop cost by category and payment method, or void an incorrect entry. |
 | **End of day** | Compare collections, expenses, and supplier payments by payment method. |
 
-The demo uses fictional names and seeded records. Changes stay in the current browser under the `barwaaqo-public-demo-v1` local storage key. Use **Reset sample data** in the sidebar to start again.
+This public version uses fictional names and seeded records. Changes stay in the current browser under the `barwaaqo-public-demo-v1` local storage key. Use **Reset workspace** in the sidebar to start again.
 
 ## Run locally
 
@@ -82,4 +82,4 @@ Use fictional descriptions when trying the forms. The demo keeps browser data un
 
 ## Design
 
-The interface uses warm neutral surfaces, forest green accents, DM Sans, and Instrument Serif. Font files load from Google Fonts, with local system fallbacks. Product images ship with the demo.
+The interface uses larger DM Sans typography, warm neutral surfaces, and forest green accents. Font files load from Google Fonts, with local system fallbacks. Product images and the Barwaaqo logo ship with the website.

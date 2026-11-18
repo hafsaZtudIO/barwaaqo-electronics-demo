@@ -14,8 +14,8 @@ export function initialState() {
             { id: "charger", name: "20W wall charger", category: "Power", sku: "PWR-005", price: 2500, cost: 1200, stock: 3, minimum: 6, image: "wall-charger.webp" },
         ],
         customers: [
-            { id: "customer-1", name: "Demo Customer A", balance: 6500 },
-            { id: "customer-2", name: "Demo Customer B", balance: 0 },
+            { id: "customer-1", name: "Customer A", balance: 6500 },
+            { id: "customer-2", name: "Customer B", balance: 0 },
         ],
         suppliers: [
             { id: "supplier-1", name: "Sample Electronics Supply" },
