@@ -182,6 +182,7 @@ img {
 .hero h1 em,.open-source em {
     font-family:"Instrument Serif",Georgia,serif;
     font-weight:400;
+    letter-spacing:-1px;
     color:#4c6c46
 }
 .hero-description {
