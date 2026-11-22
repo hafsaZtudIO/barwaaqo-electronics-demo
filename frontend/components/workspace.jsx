@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, ChevronDown, ClipboardList, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, ReceiptText, Search, Settings, ShoppingCart, Truck, Users, X } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, BarChart3, Boxes, ChevronDown, ClipboardList, LayoutDashboard, LogOut, Menu, PanelLeftClose, PanelLeftOpen, ReceiptText, Search, Settings, ShoppingCart, Truck, Users, WifiOff, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/backend/actions";
 import { Brand } from "./brand";
+import { useOffline } from "./connection";
 const groups = [
-  { name: "Workspace", links: [{ path: "/dashboard", name: "Showroom", icon: LayoutDashboard }] },
+  { name: "Workspace", links: [{ path: "/dashboard", name: "Shop overview", icon: LayoutDashboard }] },
   { name: "Selling", links: [
     { path: "/pos", name: "Point of Sale", icon: ShoppingCart },
     { path: "/sales", name: "Sales History", icon: ReceiptText },
@@ -32,6 +33,7 @@ const groups = [
 export function Workspace({ employee, children }) {
     const pathname = usePathname();
     const router = useRouter();
+    const offline = useOffline();
     const [open, setOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
     const [query, setQuery] = useState("");
@@ -42,6 +44,7 @@ export function Workspace({ employee, children }) {
     })).filter(group => group.links.length);
     const links = visibleGroups.flatMap(group => group.links);
     const searchResults = links.filter(link => link.name.toLowerCase().includes(query.trim().toLowerCase()));
+    const productSearch = `/products?${new URLSearchParams({ q: query.trim() })}`;
     const current = links.find(link => link.path === pathname)?.name ?? "Workspace";
     function openSearch() {
         setQuery("");
@@ -86,7 +89,8 @@ export function Workspace({ employee, children }) {
           <span className="breadcrumb">Workspace</span><span className="breadcrumb">/</span><strong>{current}</strong>
         </div>
         <div className="workspace-tools">
-        <button className="workspace-search-trigger" type="button" onClick={openSearch} aria-label="Search pages" aria-keyshortcuts="Control+G Meta+G"><Search size={16}/><span>Search pages</span><kbd>Ctrl G</kbd></button>
+        {offline && <span className="connection-offline" role="status"><WifiOff size={16}/> Offline</span>}
+        <button className="workspace-search-trigger" type="button" onClick={openSearch} aria-label="Search pages and products" aria-keyshortcuts="Control+G Meta+G"><Search size={16}/><span>Search</span><kbd>Ctrl G</kbd></button>
         <details className="profile"><summary aria-label="Account menu"><span className="avatar">{initials}</span><span className="profile-name"><strong>{employee.full_name}</strong><small>{role}</small></span><ChevronDown size={14}/></summary>
           <div className="profile-menu"><p>{employee.username ?? employee.full_name}{employee.employee_number && ` · ${employee.employee_number}`}</p>
             <form action={logout}><button type="submit"><LogOut size={15}/> Sign out</button></form>
@@ -94,19 +98,21 @@ export function Workspace({ employee, children }) {
         </details>
         </div>
       </header>
+      {offline && <div className="connection-banner" role="status">Connection lost. Keep the register open to save invoices on this device. Other changes need a connection.</div>}
       <main id="content" className={pathname === "/pos" ? "content content-wide" : "content"}>{children}</main>
     </div>
     <dialog className="workspace-search-dialog" ref={searchDialog} aria-labelledby="workspace-search-title">
-      <div className="workspace-search-heading"><h2 id="workspace-search-title">Search pages</h2><button className="icon-button" type="button" aria-label="Close search" onClick={() => searchDialog.current?.close()}><X size={18}/></button></div>
+      <div className="workspace-search-heading"><h2 id="workspace-search-title">Search workspace</h2><button className="icon-button" type="button" aria-label="Close search" onClick={() => searchDialog.current?.close()}><X size={18}/></button></div>
       <form onSubmit={event => {
           event.preventDefault();
-          if (!searchResults[0]) return;
+          if (!searchResults[0] && !query.trim()) return;
           searchDialog.current?.close();
           setOpen(false);
-          router.push(searchResults[0].path);
-      }}><label className="field"><span className="sr-only">Page name</span><input ref={searchInput} value={query} onChange={event => setQuery(event.target.value)} placeholder="Point of sale, products, customers…" autoComplete="off"/></label></form>
+          router.push(searchResults[0]?.path ?? productSearch);
+      }}><label className="field"><span className="sr-only">Page, product name, SKU, or barcode</span><input ref={searchInput} value={query} maxLength={150} onChange={event => setQuery(event.target.value)} placeholder="Page, product, SKU, or barcode…" autoComplete="off"/></label></form>
       <div className="workspace-search-links">
-        {!searchResults.length && <p>No matching pages.</p>}
+        {query.trim() && <Link className="workspace-product-search" href={productSearch} onClick={() => { searchDialog.current?.close(); setOpen(false); }}><Boxes size={17}/> Search products for “{query.trim()}”</Link>}
+        {!searchResults.length && <p className="muted">No matching pages. Search the product catalog above.</p>}
         {searchResults.map(link =>
           <Link key={link.path} href={link.path} onClick={() => { searchDialog.current?.close(); setOpen(false); }}><link.icon size={17}/>{link.name}</Link>)}
       </div>

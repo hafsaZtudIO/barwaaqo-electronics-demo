@@ -5,7 +5,6 @@ import { ActionForm, ShopForm } from "../action-form";
 import { createEmployee, updateEmployeeLogin } from "@/backend/actions";
 import { dateLabel, Field, Heading, Notes, options, Pager, Panel, Select, Table } from "../ui";
 import { MovementTable } from "./inventory";
-import { publicUrl } from "../../platform/navigation";
 export function Suppliers({ data, selected, history, query, historyPage }) {
     return <>
     <Heading eyebrow="ADMINISTRATION" title="Suppliers" subtitle="Manage supplier details and review delivery history."
@@ -117,9 +116,9 @@ export function Settings({ data, lookups, page }) {
   </>;
 }
 export function Reports({ data, movements, finance, query, search, invalid }) {
-    const exportHref = (kind) => publicUrl(`/api/v1/export?${new URLSearchParams({
+    const exportHref = (kind) => `/api/v1/export?${new URLSearchParams({
         kind, ...(query.from ? { from: query.from } : {}), ...(query.to ? { to: query.to } : {}), ...(query.type ? { type: query.type } : {}),
-    })}`);
+    })}`;
     return <>
     <Heading eyebrow="ANALYTICS" title="Reports" subtitle="Review sales performance and inventory activity."/>
     <Panel title="Report filters" subtitle="Sales default to the last 30 business days.">
@@ -161,12 +160,12 @@ export function Reports({ data, movements, finance, query, search, invalid }) {
             ].map(([label, value]) => <article className="stat" key={label}><div className="stat-label">{label}</div><strong>{value}</strong></article>)}</div>
       <div className="two-columns">
         {[["Daily sales", data.daily], ["Weekly sales", data.weekly], ["Monthly sales", data.monthly]].map(([title, rows]) => <Panel key={title} title={title}><Table columns={["Period starting", "Sales", "Revenue"]} rows={rows.map(row => [dateLabel(row.period), row.sales, money(row.revenue_minor)])} empty="No sales in this range."/></Panel>)}
-        <Panel title="Best-selling products"><Table columns={["Product", "Units sold", "Sales before discounts"]} rows={data.products.map(row => [row.name, row.units, money(row.revenue_minor)])} empty="No products sold in this range."/></Panel>
-        <Panel title="Sales by employee"><Table columns={["Employee", "Sales", "Revenue"]} rows={data.employees.map(row => [row.name, row.sales, money(row.revenue_minor)])} empty="No sales in this range."/></Panel>
+        <div id="product-sales"><Panel title="Best-selling products"><Table columns={["Product", "Units sold", "Sales before discounts"]} rows={data.products.map(row => [row.name, row.units, money(row.revenue_minor)])} empty="No products sold in this range."/></Panel></div>
+        <div id="employee-sales"><Panel title="Sales by employee"><Table columns={["Employee", "Sales", "Revenue"]} rows={data.employees.map(row => [row.name, row.sales, money(row.revenue_minor)])} empty="No sales in this range."/></Panel></div>
       </div>
     </>}
-    {!invalid && <Panel title="Inventory movement report"><MovementTable data={movements} admin corrections/>
+    {!invalid && <div id="inventory-movements"><Panel title="Inventory movement report"><MovementTable data={movements} admin corrections/>
       <Pager path="/reports" search={search} page={query.page} total={movements.total}/>
-    </Panel>}
+    </Panel></div>}
   </>;
 }

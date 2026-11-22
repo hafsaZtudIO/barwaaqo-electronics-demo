@@ -86,6 +86,9 @@ export async function resetWorkspace() {
         await seedSampleShop(db);
     }, { write: true });
     setSubject(sampleOwner);
+    for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("barwaaqo-demo-photo-")) localStorage.removeItem(key);
+    }
 }
 
 export async function rpc(db, name, parameters) {

@@ -1,25 +1,118 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ReceiptText, ShoppingCart } from "lucide-react";
-import { checkoutPayments, money } from "@/backend/contracts";
+import { CalendarDays, ReceiptText, Search, ShoppingCart, X } from "lucide-react";
+import { checkoutPayments, money, payments } from "@/backend/contracts";
 import { ShopForm } from "../action-form";
 import { PrintReceipt } from "../sale-fields";
-import { dateLabel, Field, Heading, Pager, Panel, Select, Table } from "../ui";
-export function Sales({ data, lookups, employee, query, search }) {
+import { businessToday, dateLabel, Field, Heading, number, Panel, Select, Table } from "../ui";
+
+const saleStatuses = [
+    { value: "all", label: "All sales" }, { value: "completed", label: "No returns" },
+    { value: "part-returned", label: "Partly returned" }, { value: "returned", label: "Fully returned" },
+];
+const saleSorts = [
+    { value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" },
+    { value: "total-high", label: "Highest amount" }, { value: "total-low", label: "Lowest amount" },
+    { value: "customer", label: "Customer name" },
+];
+
+export function Sales({ data, lookups, employee, query, customers = [], employees = [], error }) {
+    const admin = employee.role === "admin";
+    const product = query.product ? lookups.products.find(item => item.id === query.product) : null;
+    const employeeOptions = employees.map(item => ({ value: item.id, label: item.full_name ?? item.name ?? item.username }));
+    if (query.employee && !employeeOptions.some(item => item.value === query.employee)) employeeOptions.push({ value: query.employee, label: "Selected employee" });
+    const customerOptions = customers.map(item => ({ value: item.id, label: item.name }));
+    if (query.customer && !customerOptions.some(item => item.value === query.customer)) customerOptions.push({ value: query.customer, label: "Selected customer" });
+    const active = Object.fromEntries(["q", "customer", "product", "payment", "sale_status", "from", "to", "sales_sort", "page_size", ...(admin ? ["employee"] : [])]
+        .map(key => [key, query[key]])
+        .filter(([key, value]) => value != null && value !== "" && !(key === "sale_status" && value === "all")));
+    function href(changes = {}) {
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries({ ...active, ...changes }))
+            if (value != null && value !== "") params.set(key, String(value));
+        return params.size ? `/sales?${params}` : "/sales";
+    }
+    const timezone = lookups.timezone ?? "Africa/Nairobi";
+    const today = businessToday(timezone);
+    const weekStart = new Date(`${today}T12:00:00Z`);
+    weekStart.setUTCDate(weekStart.getUTCDate() - 6);
+    const dateRanges = [
+        { label: "Today", from: today, to: today },
+        { label: "Last 7 days", from: weekStart.toISOString().slice(0, 10), to: today },
+        { label: "This month", from: `${today.slice(0, 8)}01`, to: today },
+        { label: "All time", from: undefined, to: undefined },
+    ];
+    const filters = [
+        query.q && { key: "q", label: `Search: ${query.q}` },
+        query.customer && { key: "customer", label: `Customer: ${customers.find(item => item.id === query.customer)?.name ?? "Selected customer"}` },
+        query.product && { key: "product", label: `Product: ${product?.name ?? "Selected product"}` },
+        query.payment && { key: "payment", label: `Payment: ${query.payment}` },
+        query.sale_status && query.sale_status !== "all" && { key: "sale_status", label: saleStatuses.find(item => item.value === query.sale_status)?.label ?? "Return status" },
+        query.from && { key: "from", label: `From: ${dateLabel(query.from)}` },
+        query.to && { key: "to", label: `To: ${dateLabel(query.to)}` },
+        admin && query.employee && { key: "employee", label: `Employee: ${employees.find(item => item.id === query.employee)?.full_name ?? employees.find(item => item.id === query.employee)?.name ?? "Selected employee"}` },
+    ].filter(Boolean);
+    const pageSize = data.page_size ?? query.page_size ?? 25;
+    const page = data.page ?? query.page ?? 1;
+    const pages = Math.max(1, Math.ceil(data.total / pageSize));
+    const first = data.rows.length ? (page - 1) * pageSize + 1 : 0;
+    const last = data.rows.length ? first + data.rows.length - 1 : 0;
+    const time = new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: timezone });
     return <>
-    <Heading eyebrow="TRANSACTIONS" title="Sales history" subtitle="Find completed sales and reopen receipts." action={<Link href="/pos" className="button"><ShoppingCart size={17}/> Open checkout</Link>}/>
-    <Panel title={employee.role === "admin" ? "Sales history" : "Your sales history"} subtitle={`${data.total} recorded sales`}>
-      <form className="filter-bar" action="/sales">
-        <Field name="from" label="From" type="date" defaultValue={query.from}/>
-        <Field name="to" label="To" type="date" defaultValue={query.to}/>
-        <button type="submit" className="button button-secondary">Filter sales</button>
-        {(query.from || query.to) && <Link className="button button-secondary" href="/sales">Clear filters</Link>}
-      </form>
-      <Table columns={["Receipt", "Customer", "Employee", "Payment", "Date", "Total"]} rows={data.rows.map(sale => [
-            <Link key={sale.id} className="cell-link" href={`/sales?receipt=${sale.id}`}><ReceiptText size={15}/>{sale.id.slice(0, 8).toUpperCase()}</Link>,
-            sale.customer_name || "Walk-in", sale.employee_name, sale.payment, dateLabel(sale.created_at, lookups.timezone), money(sale.total_minor),
-        ])} empty="No sales match this view."/>
-      <Pager path="/sales" search={search} page={query.page} total={data.total}/>
+    <Heading eyebrow="TRANSACTIONS" title={query.product ? "Product sales history" : "Sales history"}
+      subtitle={product ? `Recorded sales containing ${product.name}.` : admin ? "Find a sale, review returns, and reopen its receipt." : "Find your sales, review returns, and reopen a receipt."}
+      action={<Link href="/pos" className="button"><ShoppingCart size={17}/> Open checkout</Link>}/>
+    <Panel title="Find a sale" subtitle="Search receipts or narrow the list using the filters below.">
+      <div className="panel-body">
+        <form className="sales-history-filters" action="/sales" key={JSON.stringify(active)}>
+          {query.product && <input type="hidden" name="product" value={query.product}/>}
+          <input type="hidden" name="sales_sort" value={query.sales_sort ?? "newest"}/>
+          <input type="hidden" name="page_size" value={pageSize}/>
+          <div className="sales-filter-search"><Field name="q" label="Receipt, customer, or reference" type="search" placeholder="Search sales…" defaultValue={query.q} maxLength={150}/></div>
+          <Select name="customer" label="Customer" value={query.customer} placeholder="All customers" options={customerOptions}/>
+          <Select name="payment" label="Payment method" value={query.payment} placeholder="All payment methods" options={payments.map(value => ({ value, label: value }))}/>
+          <Select name="sale_status" label="Return status" value={query.sale_status ?? "all"} options={saleStatuses}/>
+          <Field name="from" label="From date" type="date" defaultValue={query.from}/>
+          <Field name="to" label="To date" type="date" defaultValue={query.to}/>
+          {admin && <Select name="employee" label="Employee" value={query.employee} placeholder="All employees" options={employeeOptions}/>}
+          <div className="sales-filter-actions"><button type="submit" className="button"><Search size={16}/> Apply filters</button>{filters.length > 0 && <Link className="text-link" href="/sales">Clear filters</Link>}</div>
+        </form>
+        <nav className="sales-date-shortcuts" aria-label="Sales date ranges"><span><CalendarDays size={15}/> Date range</span>{dateRanges.map(range => <Link key={range.label}
+          href={href({ from: range.from, to: range.to })} aria-current={(query.from ?? undefined) === range.from && (query.to ?? undefined) === range.to ? "true" : undefined}>{range.label}</Link>)}</nav>
+        {filters.length > 0 && <nav className="sales-filter-chips" aria-label="Active sales filters"><span>{filters.length} active {filters.length === 1 ? "filter" : "filters"}</span>{filters.map(filter => <Link className="sales-filter-chip" key={filter.key} href={href({ [filter.key]: undefined })} aria-label={`Remove filter: ${filter.label}`}>{filter.label}<X size={13} aria-hidden="true"/></Link>)}</nav>}
+      </div>
+    </Panel>
+    <Panel title={admin ? "Recorded sales" : "Your recorded sales"}>
+      {error && <div className="panel-body"><p className="notice notice-error" role="alert">{error}</p></div>}
+      <div className="sales-list-toolbar">
+        <div className="sales-list-summary">{error ? <p>Sales list unavailable</p> : <><p>Showing <strong>{number(first)}–{number(last)}</strong> of <strong>{number(data.total)}</strong> sales</p>
+          {data.summary && <p>Receipt value <strong>{money(data.summary.total_minor)}</strong><small>All matching sales, before return adjustments</small></p>}</>}
+        </div>
+        <form className="sales-list-options" action="/sales" key={`sort-${JSON.stringify(active)}`}>
+          {Object.entries(active).filter(([key]) => key !== "sales_sort" && key !== "page_size").map(([key, value]) => <input key={key} type="hidden" name={key} value={value}/>)}
+          <Select name="sales_sort" label="Sort by" value={query.sales_sort ?? "newest"} options={saleSorts}/>
+          <Select name="page_size" label="Rows per page" value={pageSize} options={[25, 50, 100].map(value => ({ value, label: String(value) }))}/>
+          <button className="button button-secondary" type="submit">Update list</button>
+        </form>
+      </div>
+      {error ? null : data.rows.length ? <div className="table-scroll sales-history-table" role="region" aria-label="Sales history" tabIndex={0}><table>
+        <thead><tr><th scope="col">Receipt</th><th scope="col">Customer</th><th scope="col">Employee</th><th scope="col">Payment</th><th scope="col">Return status</th><th scope="col">Date</th><th scope="col" className="sales-numeric">Total</th></tr></thead>
+        <tbody>{data.rows.map(sale => {
+            const status = sale.sale_status ?? "completed";
+            return <tr key={sale.id}>
+              <td className="sales-receipt-cell"><Link className="cell-link" href={`/sales?receipt=${sale.id}`}><ReceiptText size={15}/>{sale.id.slice(0, 8).toUpperCase()}</Link><small>View receipt</small></td>
+              <td>{sale.customer_name || "Walk-in customer"}</td><td>{sale.employee_name}</td>
+              <td><span className={`badge sales-payment-badge${sale.payment === "Credit" ? " badge-warn" : " badge-neutral"}`}>{sale.payment}</span></td>
+              <td><span className={`badge sales-state-${status}`}>{saleStatuses.find(item => item.value === status)?.label ?? "No returns"}</span></td>
+              <td><span>{dateLabel(sale.created_at, timezone)}</span><small>{time.format(new Date(sale.created_at))}</small></td>
+              <td className="sales-numeric"><strong>{money(sale.total_minor)}</strong></td>
+            </tr>;
+        })}</tbody>
+      </table></div> : <div className="sales-list-empty"><ReceiptText size={28}/><h3>No sales match this view</h3><p>{filters.length ? "Try a different date range or remove a filter to find the receipt." : "Recorded sales will appear here after checkout."}</p><div className="form-actions">{filters.length > 0 && <Link className="button button-secondary" href="/sales">Clear filters</Link>}<Link className="button" href="/pos">Open checkout</Link></div></div>}
+      {!error && <nav className="sales-list-pagination pager" aria-label="Sales history pagination"><span>Page {number(page)} of {number(pages)} · {number(data.total)} sales</span><div>
+        {page > 1 ? <Link className="button button-secondary button-small" href={href({ page: page - 1 })}>Previous</Link> : <span className="button button-secondary button-small" aria-disabled="true">Previous</span>}
+        {page < pages ? <Link className="button button-secondary button-small" href={href({ page: page + 1 })}>Next</Link> : <span className="button button-secondary button-small" aria-disabled="true">Next</span>}
+      </div></nav>}
     </Panel>
   </>;
 }

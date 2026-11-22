@@ -1,28 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { syncInvoice } from "@/backend/actions";
-
-function readInvoices(key) {
-    return JSON.parse(localStorage.getItem(key) ?? "[]");
-}
-
-function watchConnection(callback) {
-    window.addEventListener("online", callback);
-    window.addEventListener("offline", callback);
-    return () => {
-        window.removeEventListener("online", callback);
-        window.removeEventListener("offline", callback);
-    };
-}
-
-const isOffline = () => !navigator.onLine;
-const serverOffline = () => false;
+import { useOffline } from "./connection";
+import { readInvoices, removeRejectedInvoice, updateInvoice } from "./invoice-storage";
 
 export function useOfflineInvoices(employeeId, refresh) {
     const key = `barwaaqo:invoices:v1:${employeeId}`;
     const [invoices, setInvoices] = useState([]);
-    const offline = useSyncExternalStore(watchConnection, isOffline, serverOffline);
+    const offline = useOffline();
     const [syncing, setSyncing] = useState(false);
     const [storageError, setStorageError] = useState("");
 
@@ -52,20 +38,17 @@ export function useOfflineInvoices(employeeId, refresh) {
                 let changed = false;
                 setSyncing(true);
                 try {
-                    for (const invoice of readInvoices(key)) {
+                    for (const invoice of readInvoices(localStorage, key)) {
                         if (invoice.error && !retryBlocked) continue;
                         const result = await send(invoice);
                         if (result.retry) {
                             if (result.message) setStorageError(result.message);
                             break;
                         }
-                        const remaining = readInvoices(key);
+                        setInvoices(updateInvoice(localStorage, key, invoice.id, result));
                         if (result.ok) {
-                            write(remaining.filter(entry => entry.id !== invoice.id));
                             changed = true;
                             setStorageError("");
-                        } else {
-                            write(remaining.map(entry => entry.id === invoice.id ? { ...entry, error: result.message } : entry));
                         }
                     }
                 } finally {
@@ -76,12 +59,12 @@ export function useOfflineInvoices(employeeId, refresh) {
         } catch {
             setStorageError("Could not sync invoices saved on this device.");
         }
-    }, [key, refresh, send, write]);
+    }, [key, refresh, send]);
 
     useEffect(() => {
         function load() {
             try {
-                setInvoices(readInvoices(key));
+                setInvoices(readInvoices(localStorage, key));
             } catch {
                 setStorageError("Could not open invoices saved on this device.");
             }
@@ -102,13 +85,15 @@ export function useOfflineInvoices(employeeId, refresh) {
     async function submit(invoice) {
         try {
             return await navigator.locks.request(key, async () => {
-                const current = readInvoices(key);
+                const current = readInvoices(localStorage, key);
                 const saved = current.find(entry => entry.id === invoice.id) ?? invoice;
                 if (saved === invoice) write([...current, invoice]);
                 const result = await send(saved);
                 if (result.retry) return { ok: true, queued: true, invoice: saved };
                 try {
-                    write(readInvoices(key).filter(entry => entry.id !== saved.id));
+                    // A definitive rejection is shown on the open cart. Background
+                    // rejections stay in the queue so their invoice can be reviewed.
+                    write(readInvoices(localStorage, key).filter(entry => entry.id !== saved.id));
                 } catch {
                     // A retained copy can safely replay its original request.
                     setStorageError("Could not update the local invoice list.");
@@ -120,5 +105,15 @@ export function useOfflineInvoices(employeeId, refresh) {
         }
     }
 
-    return { invoices, offline, syncing, storageError, sync, submit };
+    async function dismissRejected(id) {
+        try {
+            await navigator.locks.request(key, async () => {
+                setInvoices(removeRejectedInvoice(localStorage, key, id));
+            });
+        } catch {
+            setStorageError("Could not update the local invoice list. The invoice has been kept.");
+        }
+    }
+
+    return { invoices, offline, syncing, storageError, sync, submit, dismissRejected };
 }

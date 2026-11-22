@@ -34,6 +34,10 @@ The workspace starts with fictional products, suppliers, customers, staff accoun
 | **End of Day** | Collections, refunds, expenses, and supplier payments by method |
 | **Settings** | Shop name, timezone, product categories, and the audit trail |
 
+### Recent improvements
+
+The public workspace includes the updated shop overview and grouped navigation, register display preferences, product photo selection, and sales history search, date filters, return status, sorting, and pagination. Uploaded demo photos are stored with the fictional data in this browser. Large photos can exhaust browser storage; use small images for the demo.
+
 ## Sample accounts
 
 The workspace opens as the sample owner on the first visit. **Sign out** opens the original sign-in screen.

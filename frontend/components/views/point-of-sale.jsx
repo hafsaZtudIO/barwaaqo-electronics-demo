@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Barcode, ChevronDown, ClipboardList, CreditCard, Grid2X2, History, List, Minus, PackageOpen, Plus, Printer, RefreshCw, Save, Search, Trash2 } from "lucide-react";
+import { Barcode, ChevronDown, ClipboardList, CreditCard, Grid2X2, History, List, Minus, PackageOpen, Plus, Printer, RefreshCw, Save, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import { money, checkoutPayments, productUnits } from "@/backend/contracts";
 import { ActionForm, ShopForm } from "../action-form";
 import { useOfflineInvoices } from "../offline-invoices";
-import { assetUrl } from "../../platform/image";
 import { ProductPhoto } from "../product-photo";
+import { defaultRegisterPreferences, parseRegisterPreferences } from "../pos-preferences";
 import { Empty, Panel } from "../ui";
 const pageSize = 40;
 const maxLines = 50;
@@ -19,17 +19,22 @@ function dollarsToCents(value) {
 export function PointOfSale({ products, customers, employeeId, lastReceiptId }) {
     const router = useRouter();
     const draftKey = `barwaaqo:pos-draft:v1:${employeeId}`;
+    const preferencesKey = `barwaaqo:pos-preferences:v1:${employeeId}`;
     const searchBox = useRef(null);
     const scanBox = useRef(null);
     const paymentBox = useRef(null);
     const paymentDialog = useRef(null);
     const customerDialog = useRef(null);
+    const settingsDialog = useRef(null);
     const saleSound = useRef(null);
     const [refreshing, refreshCatalog] = useTransition();
     const [query, setQuery] = useState("");
     const [barcode, setBarcode] = useState("");
-    const [catalogView, setCatalogView] = useState("list");
+    const [preferences, setPreferences] = useState(defaultRegisterPreferences);
+    const { catalogView, compactRows, showPhotos, showDetails } = preferences;
+    const [preferenceError, setPreferenceError] = useState("");
     const [category, setCategory] = useState("");
+    const [inStockOnly, setInStockOnly] = useState(false);
     const [limit, setLimit] = useState(pageSize);
     const [cart, setCart] = useState([]);
     const [expandedItem, setExpandedItem] = useState(null);
@@ -43,10 +48,30 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
     const [drafts, setDrafts] = useState(null);
     const [printInvoice, setPrintInvoice] = useState(null);
     useEffect(() => {
+        const timer = window.setTimeout(() => {
+            try {
+                setPreferences(parseRegisterPreferences(localStorage.getItem(preferencesKey)));
+            } catch {
+                setPreferenceError("Saved display settings could not be opened. Default settings are in use.");
+            }
+        }, 0);
+        return () => window.clearTimeout(timer);
+    }, [preferencesKey]);
+    function updatePreferences(change) {
+        const next = { ...preferences, ...change };
+        setPreferences(next);
+        try {
+            localStorage.setItem(preferencesKey, JSON.stringify(next));
+            setPreferenceError("");
+        } catch {
+            setPreferenceError("Display settings work for this visit, but this browser could not save them.");
+        }
+    }
+    useEffect(() => {
         if (printInvoice) window.print();
     }, [printInvoice]);
     useEffect(() => {
-        const sound = new Audio(assetUrl("/sale-submit.mp3"));
+        const sound = new Audio("/sale-submit.mp3");
         sound.preload = "auto";
         sound.volume = 0.5;
         saleSound.current = sound;
@@ -60,6 +85,7 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
     const offlineInvoices = useOfflineInvoices(employeeId, router.refresh);
     const reserved = new Map();
     for (const invoice of offlineInvoices.invoices) {
+        if (invoice.error) continue;
         for (const item of invoice.data.items) {
             reserved.set(item.product_id, (reserved.get(item.product_id) ?? 0) + Number(item.quantity));
         }
@@ -70,7 +96,7 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
     const catalog = new Map(availableProducts.map(product => [product.id, product]));
     const categories = Array.from(new Set(products.map(product => product.category_name))).sort();
     const search = query.trim().toLowerCase();
-    const matches = availableProducts.filter(product => (!category || product.category_name === category) &&
+    const matches = availableProducts.filter(product => (!category || product.category_name === category) && (!inStockOnly || product.quantity > 0) &&
         (!search || [product.name, product.sku, product.barcode].some(value => value?.toLowerCase().includes(search))));
     const totalUnits = cart.reduce((sum, line) => sum + line.quantity, 0);
     const quantitySummary = productUnits.map(unit => ({
@@ -100,6 +126,24 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
         ? [...customers, addedCustomer] : customers;
     const selectedCustomer = customerOptions.find(entry => entry.id === customer);
     const unavailable = cart.some(line => line.quantity > (catalog.get(line.id)?.quantity ?? 0));
+    const readyToReview = !refreshing && cart.length > 0 && !unavailable && !invalidDiscount;
+    useEffect(() => {
+        function shortcut(event) {
+            if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.repeat || document.querySelector("dialog[open]")) return;
+            if (event.key === "F2") {
+                event.preventDefault();
+                searchBox.current?.focus();
+            }
+            if (event.key === "F4" && readyToReview) {
+                event.preventDefault();
+                setPrintInvoice(null);
+                setDrafts(null);
+                setReviewing(true);
+            }
+        }
+        window.addEventListener("keydown", shortcut);
+        return () => window.removeEventListener("keydown", shortcut);
+    }, [readyToReview]);
     function clearCart() {
         setCart([]);
         setExpandedItem(null);
@@ -247,8 +291,9 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
             },
         });
     }
-    return <div className="pos-page">
+    return <div className={`pos-page${compactRows ? " pos-compact" : ""}`}>
     <header className="pos-register-header"><h1>Point of sale</h1><div className="pos-toolbar">
+        <button className="button pos-blue" type="button" onClick={() => settingsDialog.current?.showModal()}><SlidersHorizontal size={17}/> Register settings</button>
         <Link className="button pos-blue" href="/sales"><History size={17}/> Sales history</Link>
         <Link className="button pos-violet" href="/closeout"><ClipboardList size={17}/> End of day</Link>
         {lastReceiptId && <Link className="button pos-teal" href={`/sales?receipt=${lastReceiptId}&print=1`}><Printer size={17}/> Print last receipt</Link>}
@@ -259,10 +304,15 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
         onClick={() => void offlineInvoices.sync(true)}>{offlineInvoices.syncing ? "Syncing…" : "Sync now"}</button>}>
       <div className="panel-body">
         {offlineInvoices.storageError && <p role="alert">{offlineInvoices.storageError}</p>}
+        {offlineInvoices.invoices.some(invoice => invoice.error) && <p className="notice notice-error" role="alert">Some invoices were rejected and have not been recorded as sales. Review their details before retrying. They do not reserve available stock.</p>}
         {offlineInvoices.invoices.map(invoice => <p key={invoice.id}>
           <strong>#{invoice.id.slice(0, 8).toUpperCase()}</strong> · {invoice.customerName} · {money(invoice.total)}
           {invoice.error && <span className="pos-field-error"> · Needs attention: {invoice.error}</span>}
           {" "}<button type="button" className="text-link no-print" onClick={() => setPrintInvoice({ ...invoice })}>Print invoice</button>
+          {invoice.error && <>{" · "}<button type="button" className="text-link no-print" disabled={offlineInvoices.syncing} onClick={() => {
+              if (window.confirm("Remove this rejected invoice from this device? It has not been recorded as a sale. Print it first if needed, then create a corrected sale."))
+                  void offlineInvoices.dismissRejected(invoice.id);
+          }}>Remove rejected invoice</button></>}
         </p>)}
       </div>
     </Panel>}
@@ -290,14 +340,19 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
           </button>}>
           <div className="panel-body pos-filters">
             <label className="field">
-              <span><Barcode size={16}/> Scan barcode or search</span>
+              <span><Barcode size={16}/> Scan barcode or search <kbd>F2</kbd></span>
               <div className="pos-search"><Search size={17}/>
-                <input ref={searchBox} value={query} placeholder="Barcode, SKU or product name" autoComplete="off" onChange={event => { setQuery(event.target.value); setLimit(pageSize); }} onKeyDown={event => { if (event.key === "Enter") {
+                <input ref={searchBox} value={query} placeholder="Barcode, SKU or product name" autoComplete="off" aria-keyshortcuts="F2" onChange={event => { setQuery(event.target.value); setLimit(pageSize); }} onKeyDown={event => { if (event.key === "Enter") {
         event.preventDefault();
         scan(query, searchBox);
     } }}/>
               </div>
             </label>
+            <div className="pos-catalog-summary">
+              <span role="status">{Math.min(limit, matches.length)} of {matches.length} matching products</span>
+              <label className="pos-inline-check"><input type="checkbox" checked={inStockOnly} onChange={event => { setInStockOnly(event.target.checked); setLimit(pageSize); }}/> In stock only</label>
+              {(query || category || inStockOnly) && <button type="button" className="text-link" onClick={() => { setQuery(""); setCategory(""); setInStockOnly(false); setLimit(pageSize); searchBox.current?.focus(); }}>Clear filters</button>}
+            </div>
           </div>
           <div className="pos-catalog table-scroll">
           {matches.length ? catalogView === "list" ? (
@@ -306,9 +361,9 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
                 const inCart = cart.find(line => line.id === product.id)?.quantity ?? 0;
                 const canAdd = inCart < Math.min(product.quantity, maxQuantity);
                 return <tr key={product.id} className="pos-catalog-row">
-                  <td><span className="product-with-photo"><ProductPhoto product={product}/><span>
+                  <td><span className="product-with-photo">{showPhotos && <ProductPhoto product={product}/>}<span>
                     <strong>{product.name}</strong>
-                    <small>{product.sku} · {product.category_name}</small>
+                    {showDetails && <small>{product.sku} · {product.category_name}</small>}
                   </span></span></td>
                   <td>{money(product.sale_minor)}</td>
                   <td><span className={`pos-stock ${product.quantity ? "pos-green" : "pos-red"}`}>{product.quantity || "Out"}</span></td>
@@ -319,8 +374,8 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
             })}</tbody>
             </table>) : <ul className="pos-product-cards">{matches.slice(0, limit).map(product => (
               <li key={product.id}><button type="button" className="pos-product-card" disabled={(cart.find(line => line.id === product.id)?.quantity ?? 0) >= Math.min(product.quantity, maxQuantity)} onClick={() => add(product)}>
-                <ProductPhoto product={product} variant="card"/>
-                <strong>{product.name}</strong><small>{product.sku} · {product.category_name}</small>
+                {showPhotos && <ProductPhoto product={product} variant="card"/>}
+                <strong>{product.name}</strong>{showDetails && <small>{product.sku} · {product.category_name}</small>}
                 <span><b>{money(product.sale_minor)}</b><small>{product.quantity} {product.unit ?? "Pcs"} available</small></span>
               </button></li>))}</ul>
             : <Empty>{products.length ? "No products match this search." : "Add a product and receive stock to start selling."}</Empty>}
@@ -336,8 +391,8 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
               </select>
             </label>
             <div className="pos-view-toggle" role="group" aria-label="Catalog view">
-              <button className="button pos-blue" type="button" aria-pressed={catalogView === "list"} onClick={() => setCatalogView("list")}><List size={16}/> List</button>
-              <button className="button pos-blue" type="button" aria-pressed={catalogView === "card"} onClick={() => setCatalogView("card")}><Grid2X2 size={16}/> Card</button>
+              <button className="button pos-blue" type="button" aria-pressed={catalogView === "list"} onClick={() => updatePreferences({ catalogView: "list" })}><List size={16}/> List</button>
+              <button className="button pos-blue" type="button" aria-pressed={catalogView === "card"} onClick={() => updatePreferences({ catalogView: "card" })}><Grid2X2 size={16}/> Card</button>
             </div>
           </div>
         </Panel>
@@ -364,7 +419,7 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
                 return <Fragment key={line.id}><tr className={expanded ? "pos-cart-expanded" : undefined}>
                   <td><button type="button" className="pos-product-name product-with-photo" aria-expanded={expanded} aria-controls={detailId}
                     onClick={() => toggleItem(line.id)}>
-                    {product && <ProductPhoto product={product}/>}
+                    {showPhotos && product && <ProductPhoto product={product}/>}
                     <span>{name}</span>
                   </button>
                     {line.error ? <small className="pos-field-error">Check line discount</small> :
@@ -476,8 +531,8 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
         clearCart(); }}><Trash2 size={17}/> Cancel sale</button>
               <Link className="button pos-teal" href="/sales"><History size={17}/> Receipts</Link>
             </div>
-            <button className="button pos-pay" type="button" disabled={!cart.length || unavailable || refreshing || invalidDiscount} onClick={() => { setPrintInvoice(null); setDrafts(null); setReviewing(true); }}>
-              <CreditCard size={17}/> Pay {money(total)}
+            <button className="button pos-pay" type="button" aria-keyshortcuts="F4" disabled={!readyToReview} onClick={() => { setPrintInvoice(null); setDrafts(null); setReviewing(true); }}>
+              <CreditCard size={17}/> Pay {money(total)} <kbd>F4</kbd>
             </button>
             </div></div>
             {drafts !== null && <section className="pos-drafts" aria-label="Parked sales on this device">
@@ -494,6 +549,19 @@ export function PointOfSale({ products, customers, employeeId, lastReceiptId }) 
         </Panel>
       </div>
     </ActionForm>
+    <dialog ref={settingsDialog} className="pos-payment-dialog pos-settings-dialog" aria-labelledby="pos-settings-title" aria-describedby="pos-settings-description">
+      <div className="pos-settings-heading"><h2 id="pos-settings-title">Register settings</h2><button type="button" className="icon-button" aria-label="Close register settings" onClick={() => settingsDialog.current?.close()}><X size={20}/></button></div>
+      <p id="pos-settings-description" className="muted">Choose how products appear. These settings are saved for your account in this browser.</p>
+      <div className="pos-settings-fields">
+        <label className="field"><span>Default catalog view</span><select value={catalogView} onChange={event => updatePreferences({ catalogView: event.target.value })}><option value="list">List</option><option value="card">Cards</option></select></label>
+        <label className="pos-inline-check"><input type="checkbox" checked={compactRows} onChange={event => updatePreferences({ compactRows: event.target.checked })}/> Compact table rows</label>
+        <label className="pos-inline-check"><input type="checkbox" checked={showPhotos} onChange={event => updatePreferences({ showPhotos: event.target.checked })}/> Show product photos in catalog and cart</label>
+        <label className="pos-inline-check"><input type="checkbox" checked={showDetails} onChange={event => updatePreferences({ showDetails: event.target.checked })}/> Show SKU and category in catalog</label>
+      </div>
+      <p className="pos-shortcut-hint"><kbd>F2</kbd> Find a product · <kbd>F4</kbd> Review payment</p>
+      {preferenceError && <p className="notice notice-error" role="status">{preferenceError}</p>}
+      <div className="form-actions"><button type="button" className="button pos-blue" onClick={() => updatePreferences({ ...defaultRegisterPreferences })}>Reset display settings</button><button type="button" className="button pos-green" onClick={() => settingsDialog.current?.close()}>Done</button></div>
+    </dialog>
     {printInvoice && <article className="offline-print-receipt sales-receipt" aria-hidden="true">
       <header className="receipt-header"><div><h2>Barwaaqo Electronics</h2>
         <p>Offline invoice #{printInvoice.id.slice(0, 8).toUpperCase()} · Pending sync</p></div></header>

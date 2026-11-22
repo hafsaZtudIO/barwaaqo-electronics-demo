@@ -21,6 +21,7 @@ const repository = {
 
 export async function readDatabase(db, identity, key, options = {}) {
     const credentials = ["supabase", identity.subject];
+    if (key === "sales_history") return rpc(db, "be_sales_history", [...credentials, options]);
     if (["expenses", "purchases", "purchase", "finance_summary"].includes(key))
         return rpc(db, "be_finance_read", [...credentials, key, options]);
     if (key === "sale_revision") return rpc(db, "be_sale_revision", [...credentials, options.id]);
@@ -76,6 +77,31 @@ export async function writeShop(command, requestId, expectedEmployeeId) {
         if (employee.role !== "admin" && !employeeCommands.has(command.name)) throw new AccessError(403);
         return writeDatabase(db, identity.subject, command, requestId);
     }, { write: true });
+}
+
+export async function saveProductPhoto(file) {
+    await pageEmployee(true);
+    if (!file?.size || file.size > 5 * 1024 * 1024 || !["image/jpeg", "image/png", "image/webp"].includes(file.type))
+        throw new ShopError("Choose a JPG, PNG, or WebP photo up to 5 MB.");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const valid = file.type === "image/jpeg" ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
+        : file.type === "image/png" ? [137,80,78,71,13,10,26,10].every((value,index) => bytes[index] === value)
+        : String.fromCharCode(...bytes.slice(0,4)) === "RIFF" && String.fromCharCode(...bytes.slice(8,12)) === "WEBP";
+    if (!valid) throw new ShopError("This file is not a valid JPG, PNG, or WebP photo.");
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const id = crypto.randomUUID();
+                localStorage.setItem("barwaaqo-demo-photo-" + id, reader.result);
+                resolve("https://barwaaqo-demo.invalid/photos/" + id);
+            } catch {
+                reject(new ShopError("Browser storage is full. Choose a smaller photo or remove unused demo data."));
+            }
+        };
+        reader.onerror = () => reject(new ShopError("Could not read the selected photo."));
+        reader.readAsDataURL(file);
+    });
 }
 
 export async function signInEmployee(login, password) {

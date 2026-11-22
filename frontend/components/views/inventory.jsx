@@ -3,6 +3,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Plus, Search } from "lucide-react";
 import { money, productUnits, reasons } from "@/backend/contracts";
 import { ShopForm } from "../action-form";
 import { ProductPhoto } from "../product-photo";
+import { ProductPhotoField } from "../product-photo-field";
 import { businessToday, dateLabel, Empty, Field, Heading, Notes, options, Pager, Panel, Select, Table } from "../ui";
 const stockStatuses = [
     { value: "all", label: "All active products" }, { value: "in-stock", label: "Healthy stock" },
@@ -34,7 +35,7 @@ export function ProductForm({ data, product }) {
         <Field label="Minimum stock" name="minimum_stock" type="number" min={0} max={1000000} defaultValue={product?.minimum_stock ?? 0} required/>
         <Field label="Purchase price (USD)" name="cost_minor" inputMode="decimal" defaultValue={((product?.cost_minor ?? 0) / 100).toFixed(2)} required/>
         <Field label="Selling price (USD)" name="sale_minor" inputMode="decimal" defaultValue={((product?.sale_minor ?? 0) / 100).toFixed(2)} required/>
-        <Field label="Product photo URL (HTTPS)" name="image_url" type="url" defaultValue={product?.image_url} maxLength={1500}/>
+        <ProductPhotoField imageUrl={product?.image_url}/>
         <Notes label="Description" name="description" value={product?.description}/>
       </div>
     </ShopForm></div>
@@ -53,10 +54,11 @@ export function MovementTable({ data, admin, corrections }) {
 }
 export function Products({ employee, data, lookups, query, search }) {
     const admin = employee.role === "admin";
+    const shortages = query.status === "low" || query.status === "out";
     return <>
     <Heading eyebrow="INVENTORY" title="Products" subtitle="Search the catalog and check current stock." action={admin && <Link href={search.new ? "/products" : "/products?new=1"} className="button"><Plus size={17}/>{search.new ? "Back to catalog" : "Add product"}</Link>}/>
     {admin && search.new && <ProductForm data={lookups}/>}
-    <Panel title="Product catalog" subtitle={`${data.total} matching products`}>
+    <Panel title={shortages ? "Stock shortages" : "Product catalog"} subtitle={`${data.total} matching products${shortages ? " · To minimum shows the units needed to reach the minimum stock level." : ""}`}>
       <form className="filter-bar" action="/products">
         <div className="filter-search"><Field label="Search" name="q" placeholder="Product, SKU, or barcode" defaultValue={query.q}/></div>
         <Select label="Category" name="category" placeholder="All categories" options={options(lookups.categories)} value={query.category}/>
@@ -66,13 +68,17 @@ export function Products({ employee, data, lookups, query, search }) {
             { value: "quantity", label: "Highest quantity" }, { value: "newest", label: "Newest" },
         ]} value={query.sort ?? "name"}/>
         <button className="button button-secondary" type="submit"><Search size={16}/> Apply</button>
+        {(query.q || query.category || (query.status && query.status !== "all") || (query.sort && query.sort !== "name")) &&
+          <Link className="text-link" href="/products">Clear filters</Link>}
       </form>
-      <Table columns={["Product", "SKU", "Category", "On hand", "Selling price", "Status"]} rows={data.rows.map(product => [
+      <Table columns={["Product", "SKU", "Category", "On hand", "Selling price", "Status", ...(shortages ? ["To minimum"] : []), ...(shortages && admin ? ["Replenish"] : [])]} rows={data.rows.map(product => [
             <span key={product.id} className="product-with-photo"><ProductPhoto product={product}/>
               <span><Link className="cell-link" href={`/products?id=${product.id}`}>{product.name}</Link>
                 {(product.brand || product.model) && <small>{product.brand} {product.model}</small>}</span>
             </span>,
             product.sku, product.category_name, `${product.quantity} ${product.unit ?? "Pcs"}`, money(product.sale_minor), <StockBadge key="status" product={product}/>,
+            ...(shortages ? [`${Math.max(0, product.minimum_stock - product.quantity)} ${product.unit ?? "Pcs"}`] : []),
+            ...(shortages && admin ? [<Link key="receive" className="text-link" href={`/stock-in?product=${product.id}`}>Receive stock</Link>] : []),
         ])} empty="No products match these filters."/>
       <Pager path="/products" search={search} page={query.page} total={data.total}/>
     </Panel>
@@ -94,6 +100,7 @@ export function ProductDetails({ product, lookups, movements, employee, page }) 
         <div className="panel-body">
           <ProductPhoto product={product} variant="detail" decorative={false}/>
           <dl className="detail-list">{details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          <div className="form-actions" style={{ marginTop: 18 }}><Link className="button button-secondary" href={`/sales?product=${product.id}`}>{admin ? "Sales history" : "Your sales for this product"}</Link></div>
           {!product.archived && <div className="form-actions" style={{ marginTop: 18 }}>
             <Link className="button" href={`/stock-in?product=${product.id}`}><ArrowDownToLine size={16}/> Receive stock</Link>
             <Link className="button button-secondary" href={`/stock-out?product=${product.id}`}><ArrowUpFromLine size={16}/> Issue stock</Link>

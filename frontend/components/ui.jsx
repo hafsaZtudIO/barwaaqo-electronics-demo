@@ -27,7 +27,7 @@ export function Empty({ children }) {
 export function Table({ columns, rows, empty = "No records found." }) {
     if (!rows.length)
         return <Empty>{empty}</Empty>;
-    return <div className="table-scroll"><table><thead><tr>{columns.map(column => <th key={column} scope="col">{column}</th>)}</tr></thead>
+    return <div className="table-scroll" role="region" aria-label={`${columns.join(", ")} table`} tabIndex={0}><table><thead><tr>{columns.map(column => <th key={column} scope="col">{column}</th>)}</tr></thead>
     <tbody>{rows.map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody></table></div>;
 }
 export function Pager({ path, search, page, total, pageParam = "page" }) {

@@ -11,9 +11,10 @@ import { SaleReturn } from "@/frontend/components/views/sale-return";
 import { Employees, Reports, Settings, Suppliers } from "@/frontend/components/views/administration";
 import { businessToday } from "@/frontend/components/ui";
 import { pageEmployee, readShop } from "@/backend/shop";
+import { DatabaseSchemaError, ShopError } from "@/backend/ports";
 import { queryOptions } from "@/backend/validation";
 const sections = {
-    dashboard: "Showroom", pos: "Point of sale", closeout: "End of day", products: "Products", "stock-in": "Stock In", "stock-out": "Stock Out",
+    dashboard: "Shop overview", pos: "Point of sale", closeout: "End of day", products: "Products", "stock-in": "Stock In", "stock-out": "Stock Out",
     sales: "Sales", customers: "Customers", suppliers: "Suppliers", employees: "Employees", reports: "Reports", settings: "Settings",
     expenses: "Expenses", purchases: "Supplier purchases",
 };
@@ -99,8 +100,30 @@ export default async function SectionPage({ params, searchParams }) {
             }
             if (search.new)
                 redirect("/pos");
-            const [data, lookups] = await Promise.all([readShop("sales", query), readShop("lookups")]);
-            return <Sales data={data} lookups={lookups} employee={employee} query={query} search={search}/>;
+            const invalidDates = query.from && query.to && query.from > query.to;
+            const history = invalidDates
+                ? Promise.resolve({ error: "Choose a To date on or after the From date." })
+                : readShop("sales_history", query).catch(error => {
+                    if (error instanceof ShopError && error.message === "The shop database needs the sales history update.")
+                        return { error: employee.role === "admin"
+                            ? "Apply the sales history database update (202611210014_sales_history.sql) to enable search, filters, and sorting."
+                            : "Sales history needs a database update. Ask your administrator to enable the updated list." };
+                    throw error;
+                });
+            let result, lookups, customers;
+            try {
+                [result, lookups, customers] = await Promise.all([history, readShop("lookups"), readShop("customer_options")]);
+            } catch (error) {
+                if (!(error instanceof DatabaseSchemaError)) throw error;
+                result = { error: employee.role === "admin"
+                    ? `Database update required: ${error.relation ? `${error.relation} is missing` : "a required table or view is unavailable"}. Check the database and apply pending migrations in filename order.`
+                    : "Sales history needs a database update. Ask your administrator to check pending migrations." };
+                lookups = { products: [], timezone: "Africa/Nairobi" };
+                customers = [];
+            }
+            const data = result.error ? { rows: [], total: 0, page: 1, page_size: query.page_size ?? 25, summary: { total_minor: 0, sales_count: 0 } } : result;
+            return <Sales data={data} lookups={lookups} customers={customers} employees={data.employee_options ?? []}
+                employee={employee} query={query} search={search} error={result.error}/>;
         }
         case "suppliers": {
             const historyPage = queryOptions.parse({ page: search.historyPage }).page;

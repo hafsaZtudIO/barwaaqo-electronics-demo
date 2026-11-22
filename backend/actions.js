@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { router } from "../frontend/platform/navigation";
 import { z } from "zod";
 import { AccessError, ConnectionError, ShopError } from "./ports";
-import { createShopEmployee, identityProvider, pageEmployee, signInEmployee, updateShopEmployeeLogin, writeShop } from "./shop";
+import { createShopEmployee, identityProvider, pageEmployee, saveProductPhoto, signInEmployee, updateShopEmployeeLogin, writeShop } from "./shop";
 import { email, employeeNumber, employeeUsername, parseCommand } from "./validation";
 import { minimumPasswordLength } from "./contracts";
 const password = z.string().min(minimumPasswordLength, `Choose a password with at least ${minimumPasswordLength} characters.`).max(128);
@@ -60,7 +60,10 @@ export async function submitShop(name, _state, form) {
         }
         if (name === "update_employee")
             data.active = data.active === "true";
+        const photo = name === "save_product" ? form.get("image_file") : null;
+        if (photo?.size) data.image_url = "";
         const command = parseCommand(name, data);
+        if (photo?.size) command.data.image_url = await saveProductPhoto(photo);
         const result = await writeShop(command, requestId);
         revalidatePath("/", "layout");
         if (command.name === "invite_employee") {

@@ -7,3 +7,9 @@ export class AccessError extends Error {
 
 export class ShopError extends Error {}
 export class ConnectionError extends ShopError {}
+export class DatabaseSchemaError extends ShopError {
+    constructor() {
+        super("The shop database schema is incomplete. Check pending database migrations.");
+        this.name = "DatabaseSchemaError";
+    }
+}
